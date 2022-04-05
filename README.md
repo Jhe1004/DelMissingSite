@@ -39,4 +39,4 @@ python delmissingsite.py -p 0.12 -n 40
 ```
 
 # 引用/Citing
-He J. DelMissingSiteV1.0 DOI: 10.5281/zenodo.6415293
+He J. (2022). Jhe1004/DelMissingSite: (v1.1.0). Zenodo. https://doi.org/10.5281/zenodo.6415293
