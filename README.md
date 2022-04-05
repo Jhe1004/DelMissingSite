@@ -38,5 +38,5 @@ python delmissingsite.py -p 0.12 -n 40
 #功能：以默认参数运行本软件，软件将处理当前文件夹中所有扩展名为“.fasta”结尾的“排序文件”。排序文件中所有缺失数据比例在12%以上的位点会被删除。并且软件会最大并行处理40个文件。
 ```
 
-引用/Citing
+# 引用/Citing
 He J. DelMissingSiteV1.0 DOI: 10.5281/zenodo.6415293
