@@ -2,17 +2,6 @@
 
 ## 1. Introduction
 
-### 1.1 Purpose
-
-The diversity of life forms on Earth is a reflection of their shared evolutionary history. Understanding the relationships between different biological groups is not only essential for evolutionary biology but also forms the foundation for taxonomy, species classification, and various biological disciplines. A key focus in these studies is the construction of reliable phylogenetic trees, which represent the evolutionary relationships between species.
-
-With advancements in molecular biology, researchers now rely on macromolecules like DNA and protein sequences to infer evolutionary histories more accurately (Yang & Olmstead, 1997; Qiu et al., 2000; Chase et al., 2016). The typical workflow of phylogenetic research involves two major steps: **sequence alignment** and **phylogenetic tree construction**. Various tools have been developed to aid in these processes (Thompson et al., 1994; Wilgenbusch & Swofford, 2003; Edgar et al., 2004; Darling et al., 2004; Ronquist et al., 2012; Katoh et al., 2013; Stamatakis, 2014; Minh et al., 2020).
-
-However, some alignment sites may not be strictly orthologous due to significant genetic distance between sequences, which could impact the accuracy of the phylogenetic tree. Such sites are often characterized by excessive gaps (Löytynoja & Goldman, 2008). Therefore, a crucial yet underexplored step between sequence alignment and tree construction is the **removal of sites with excessive missing data (gaps)** based on a user-defined threshold.
-
-Historically, due to shorter sequence lengths, researchers manually removed these gap-rich sites. Automation tools like Gblocks (Castresana, 2000) were later developed to handle this process. However, with the advent of high-throughput sequencing technologies, researchers now deal with thousands of sequences or even whole genomes, making manual deletion impossible. Gblocks also has limitations: it is single-threaded and struggles with long sequences, leading to significant time delays. Thus, there is a pressing need for a tool that can efficiently handle large-scale and long-sequence datasets in parallel, similar to Gblocks, but with higher scalability and efficiency.
-
-### 1.2 Features
 
 **DelMissingSite** is designed to automatically remove alignment sites with high proportions of missing data. It can:
 - **Process large datasets in parallel**, making it suitable for high-throughput sequencing.
@@ -61,10 +50,5 @@ python delmissingsite.py -p 0.12 -n 40
 
 If you use this software in your research, please cite the following:
 
-He J. (2022). Jhe1004/DelMissingSite: (v1.1.0). Zenodo. https://doi.org/10.5281/zenodo.6415293
+He, J. et al. (2022). A phylotranscriptome study using silica gel-dried leaf tissues produces an updated robust phylogeny of Ranunculaceae. Molecular Phylogenetics and Evolution, 174, 107545.
 
----
-
-### Summary of Enhancements in This Version:
-- **Parallel Processing**: DelMissingSite can handle multiple alignment files simultaneously, making it suitable for large-scale datasets.
-- **Efficiency**: The software can process long sequences much faster than traditional tools.
