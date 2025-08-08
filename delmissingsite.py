@@ -9,7 +9,7 @@ import argparse
 import sys
 
 alignment_len = 50000
-
+normal_site_list = ["A","a","T","t","C","c","G","g"]
 '''
 解析参数
 '''
@@ -17,9 +17,9 @@ parser = argparse.ArgumentParser(description="Options for cp_alignment.py",
                                  add_help=True)
 additional = parser.add_argument_group("additional arguments")    
 additional.add_argument('-p', '--proportion', action="store", type=float, 
-                        default=0.5, metavar='\b', help='''The proportion of 
+                        default=0.2, metavar='\b', help='''The proportion of 
                         missing data allowed in each site, default = 0.2''')
-additional.add_argument('-n', '--num_cpu', action="store", type=int, default=12,
+additional.add_argument('-n', '--num_cpu', action="store", type=int, default=40,
                         metavar='\b', help='''The maximum number of CPUs that 
                         this script can be used (Two usable CPUs means that the
                         script will analyze two matrices at the same time), 
@@ -75,50 +75,70 @@ def if80to1(fasta_name):
     '''
     函数if80to1: 
         如果fasta序列是80列换行的话则修改成不换行
+        同时，删除所有序列都是“-”“?”或“N”的样本
     输入：
         待处理的fasta文件名称
     输出：
-        如果原始fasta中的序列是80行换行的则将所有序列集中至一行。并写出一个新的
-    后缀为“.fa”格式的文件
+        如果原始fasta中的序列是80行换行的则将所有序列集中至一行，并写出一个新的
+        后缀为“.fa”格式的文件
         如果序列的长度超过“alignment_len”中设定的长度，则返回一个真值，准备开始分割这个文件
     '''
     tmp_len_list = []
+    valid_records = []  # 存储有效样本的记录
     for each_record in SeqIO.parse(fasta_name, "fasta"):
-        tmp_len_list.append(len(str(each_record.seq)))
+        seq_str = str(each_record.seq)
+        # 检查序列是否完全由“-”、“?”或“N”组成
+        if not all(c in "-?N" for c in seq_str):
+            valid_records.append(each_record)
+            tmp_len_list.append(len(seq_str))
+    
+    # 如果没有有效样本，删除原文件并返回 False
+    if not valid_records:
+        print(f"Warning: {fasta_name} has no valid samples after filtering.")
+        os.remove(fasta_name)
+        return False
+    
+    # 计算最大序列长度
     tmp_len_list.sort()
-    with open(fasta_name[:-3], "a") as write_file:
-        for each_record in SeqIO.parse(fasta_name, "fasta"):
-            if len(str(each_record.seq)) != tmp_len_list[-1]:
-                gap = "-"*(tmp_len_list[-1] - len(str(each_record.seq)))
+    max_len = tmp_len_list[-1]
+    
+    # 写入新的 FASTA 文件（后缀为 .fa）
+    new_fasta_name = fasta_name[:-6] + ".fa"  # 假设输入文件后缀是 .fasta
+    with open(new_fasta_name, "w") as write_file:
+        for each_record in valid_records:
+            seq_str = str(each_record.seq)
+            # 如果序列长度小于最大长度，用“-”补齐
+            if len(seq_str) < max_len:
+                gap = "-" * (max_len - len(seq_str))
                 each_record.seq = each_record.seq + gap
-                write_file.write(">" + str(each_record.id) + "\n")
-                write_file.write(str(each_record.seq) + "\n")    
-            else:
-                write_file.write(">" + str(each_record.id) + "\n")
-                write_file.write(str(each_record.seq) + "\n")
-    if tmp_len_list[0] >= alignment_len:
+            write_file.write(">" + str(each_record.id) + "\n")
+            write_file.write(str(each_record.seq) + "\n")
+    
+    
+    # 检查是否需要分割文件
+    if max_len >= alignment_len:
         return True
     else:
-        return False                             
+        return False                         
              
 def split_fasta(fasta_name):
     '''
     函数split_fasta: 
-        将排序文件每隔2000bp分割一次
+        将排序文件每隔alignment_len bp分割一次
     输入：
-        待处理的fasta文件名称
+        待处理的fasta文件名称（后缀为 .fa）
     输出：
         后缀为“.fa”，并且文件名中带有“.split.”字样的文件
     '''
-    with open(fasta_name[:-3], "r") as read_file:
+    with open(fasta_name, "r") as read_file:
         sequences = read_file.readlines()
         length = len(sequences[1]) - 1
         left = 0
         right = alignment_len
         while True:
-            new_name = (fasta_name[:-6] + ".split." + str(left) + ".fa")
+            new_name = (fasta_name[:-3] + ".split." + str(left) + ".fa")
             if right <= length:  
-                with open(new_name, "a") as write_file:
+                with open(new_name, "w") as write_file:
                     for each_line in sequences:
                         if each_line[0] == ">":
                             write_file.write(each_line)
@@ -127,7 +147,7 @@ def split_fasta(fasta_name):
                 left = left + alignment_len
                 right = right + alignment_len
             else:
-                with open(new_name, "a") as write_file:
+                with open(new_name, "w") as write_file:
                     for each_line in sequences:
                         if each_line[0] == ">":
                             write_file.write(each_line)
@@ -173,10 +193,10 @@ def calculate(fasta_name, proportion):
     column = seq_array.shape[1]
     temp_list = []
     for each_num in range(0,column):
-        gap1 = list(seq_array[each_num]).count("-")
-        gap2 = list(seq_array[each_num]).count("?")
-        gap3 = list(seq_array[each_num]).count("N")        
-        gap_num = gap1 + gap2 + gap3
+        gap_num = 0
+        for site in list(seq_array[each_num]):
+            if site not in normal_site_list:
+                gap_num = gap_num + 1
         if gap_num/row >= proportion:   
             pass
         else:
@@ -232,17 +252,32 @@ def main_get_homo(file_name):
 def preprocessing(file_name):
     '''
     函数preprocessing: 
-        1：如果是80行换行的fasta，则转化为不换行的
+        1：如果是80行换行的fasta，则转化为不换行
         2：如果矩阵的长度超过"alignment_len"bp，则将矩阵分割成最长为"alignment_len"bp的小矩阵
+        3：删除所有序列都是“-”“?”或“N”的样本
     输入：
         自动输入文件夹中“.fasta”格式文件
     输出：
-        “.fas”格式的结果文件
+        “.fa”格式的中间文件，最终生成“.fas”格式的结果文件
     '''  
     for fasta_name in file_name:
         if if80to1(fasta_name):
-            split_fasta(fasta_name)
-            os.remove(fasta_name[:-3])
+            new_fasta_name = fasta_name[:-6] + ".fa"
+            split_fasta(new_fasta_name)
+            os.remove(new_fasta_name)
+
+
+def fasta2dict(fasta_file):
+    #将fasta文件转化成一个python列表
+    res_dict = {}
+    with open(fasta_file, "r") as read_file:
+        for each_line in read_file:
+            if each_line[0] == ">":
+                seq_name = each_line.split(" ")[0][1:].replace("\n", "").replace("/","_").replace("\\","_")
+                res_dict[seq_name] = ""
+            else:
+                res_dict[seq_name] = res_dict[seq_name] + each_line.replace("\n", "")
+    return res_dict, len(res_dict[seq_name])
 
 def concat(gene_name_list):
     '''
@@ -259,30 +294,27 @@ def concat(gene_name_list):
         for each_file_name in os.listdir(os.getcwd()):
             if each_gene + ".split." in each_file_name:
                 fasta_file_list.append(each_file_name)
+        
         concat_list = []
+        name_list = []
         for each_file in fasta_file_list:
-            with open(each_file, "r") as read_file:
-                for each_line in  read_file:
-                    if each_line[0] == ">":
-                        if each_line not in concat_list:
-                            concat_list.append(each_line)
-        n = 0
-        for each_file in fasta_file_list:
-            fasta_dict = SeqIO.to_dict(SeqIO.parse(each_file, "fasta"))
-            for each_len in fasta_dict:
-                seq_len = len(fasta_dict[each_len].seq)
-                break
-            for index, each_species in enumerate(concat_list):
-                if each_species.split("\n")[0][1:] in fasta_dict:
-                    str1 = str(fasta_dict[each_species.split("\n")[0][1:]].seq)
-                    concat_list[index] = concat_list[index] + str1
-                else:
-                    str2 = "?"*seq_len
-                    concat_list[index] = concat_list[index] + str2
-            os.remove(each_file)
-        with open(each_gene + ".fas", "a") as write_file:
-            for each_line in concat_list:
-                write_file.write(each_line + "\n")
+            fasta_dict = fasta2dict(each_file)
+            concat_list.append(fasta_dict)
+            for each_name in fasta_dict[0]:
+                if each_name not in name_list:
+                    name_list.append(each_name)
+        for each_name in name_list:
+            with open(each_gene + each_name + ".temp", "a") as write_file:
+                write_file.write(">" + each_name + "\n")
+                for each_dict in concat_list:
+                    if each_name in each_dict[0]:
+                        write_file.write(each_dict[0][each_name])
+                    else:
+                        write_file.write("?"*each_dict[1])
+                write_file.write("\n")
+        os.system("cat " + each_gene + "*.temp > " + each_gene + ".fas")
+        os.system("rm " + each_gene + "*.temp")
+        os.system("rm " + each_gene + ".split*")
         
 
 
@@ -317,7 +349,7 @@ if __name__=="__main__":
     gene_name_list = []
     for each_file_name in os.listdir(os.getcwd()): 
         if ".split." in each_file_name:
-            gene_name = each_file_name.split(".")[0]
+            gene_name = each_file_name.split(".split")[0]
             if gene_name not in gene_name_list:
                 gene_name_list.append(gene_name)
     th_list = get_th_list(gene_name_list)
